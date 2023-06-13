@@ -8,12 +8,15 @@
 import { defineComponent } from 'vue'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import line from '@/functions/line'
+import trigger from '@/functions/trigger'
 
 export default defineComponent({
     name: 'App',
     components: {}, 
     data() {
         return {
+            line: null as line | null,
             tags: {
                 direction: 'x'
             }
@@ -21,7 +24,7 @@ export default defineComponent({
     },
     methods: {
         viewClick() {
-            console.log('viewClick')
+            this.line?.click()
         }
     },
     mounted() {
@@ -31,11 +34,11 @@ export default defineComponent({
         const renderer = new THREE.WebGLRenderer({ canvas: canva, antialias: true })
         renderer.shadowMap.enabled = true;
         const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000)
-        camera.position.x = -5
-        camera.position.y = 10
-        camera.position.z = -10
-        // const controls = new OrbitControls(camera, renderer.domElement)
-        // controls.enableDamping = true
+        camera.position.x = -10
+        camera.position.y = 20
+        camera.position.z = -5
+        const controls = new OrbitControls(camera, renderer.domElement)
+        controls.enableDamping = true
 
         function resizeRendererToDisplaySize(renderer: THREE.WebGLRenderer) {
             const canvas = renderer.domElement
@@ -52,7 +55,7 @@ export default defineComponent({
         }
 
         function animate() {
-            // controls.update()
+            controls.update()
             renderer.render(scene, camera)
             requestAnimationFrame(animate)
             if (resizeRendererToDisplaySize(renderer)) {
@@ -65,10 +68,11 @@ export default defineComponent({
 
         // 环境光
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.6)
-        dirLight.position.set(-10, 8, -5)
+        dirLight.position.set(100, 50, 100)
         dirLight.castShadow = true
-        dirLight.shadow.mapSize = new THREE.Vector2(1024, 1024)
         scene.add(dirLight)
+        const light = new THREE.AmbientLight( 0x404040 );
+        scene.add( light );
         // 地板
         let floorGeometry = new THREE.PlaneGeometry(3000, 3000)
         let floorMaterial = new THREE.MeshPhongMaterial({color: 0xa1a1a1})
@@ -77,56 +81,45 @@ export default defineComponent({
         floor.receiveShadow = true
         floor.position.y = -0.001
         scene.add(floor)
-        // 添加一个立方体
-        const geometry = new THREE.BoxGeometry( 1, 1, 1 )
-        const material = new THREE.MeshBasicMaterial( {color: 0x007acc} )
-        const cube = new THREE.Mesh( geometry, material )
-        cube.position.y = 0.5
-        cube.traverse((item) => {
-            if (item instanceof THREE.Mesh) {
-                item.castShadow = true
-            }
-        })
-        scene.add(cube)
-        // 再添加一个作为参考
-        const material1 = new THREE.MeshBasicMaterial( {color: 0x4dd1ff} )
-        const cube1 = new THREE.Mesh( geometry, material1 )
-        cube1.position.y = 0.5
-        cube1.position.x = 1
-        cube1.traverse((item) => {
-            if (item instanceof THREE.Mesh) {
-                item.castShadow = true
-            }
-        })
-        scene.add(cube1)
 
-        window.requestAnimationFrame(callback);
-        function callback() {
-            // 让方块向 x 轴移动并且增加长度
-            cube.position.x += 0.1
-            cube.scale.x += 0.2
-            cube1.position.x += 0.2
-            window.requestAnimationFrame(callback);
-            // 让镜头跟随 cube1 移动并保持原有视角
-            camera.position.x = cube1.position.x - 5
-            camera.lookAt(cube1.position)
-        }
+        // 一个10*10 高度 5 的立方体，某一边在 0,0,0
+        // let cubeGeometry = new THREE.BoxGeometry(10, 10, 10)
+        // let cubeMaterial = new THREE.MeshPhongMaterial({color: 0xa1a1a1})
+        // let cube = new THREE.Mesh(cubeGeometry, cubeMaterial)
+        // cube.castShadow = true
+        // cube.receiveShadow = true
+        // cube.position.set(0, 5, 0)
+        // scene.add(cube)
 
-        function makeCube() {
-            const geometry = new THREE.BoxGeometry( 1, 1, 1 )
-            const material = new THREE.MeshBasicMaterial( {color: 0x007acc} )
-            const cube = new THREE.Mesh( geometry, material )
-            // 设置位置为 cube 的位置
-            cube.position.x = cube1.position.x
-            cube.position.y = cube1.position.x
-            cube.traverse((item) => {
-                if (item instanceof THREE.Mesh) {
-                    item.castShadow = true
-                }
-            })
-            scene.add(cube)
-            return cube
-        }
+        // let cubeGeometry11 = new THREE.BoxGeometry(1, 1, 1)
+        // let cubeMaterial11 = new THREE.MeshPhongMaterial({color: 0x00ff00})
+        // let cube11 = new THREE.Mesh(cubeGeometry11, cubeMaterial11)
+        // cube11.castShadow = true
+        // cube11.position.set((10 / 0.1) * 0.2, 0.5, 0)
+        // scene.add(cube11)
+
+        // let cube12 = new THREE.Mesh(cubeGeometry11, cubeMaterial11)
+        // cube12.castShadow = true
+        // cube12.position.set(0, 10.5, 0)
+        // scene.add(cube12)
+        
+        // 创建舞线，在立方体上面的中央
+        this.line = new line(scene, camera, renderer);
+        this.line.run()
+
+        // // 创建触发器
+        // this.line.addTrigger(new trigger(new THREE.Vector3(0, 10.5, 0), [3, 3, 3], () => {
+        //     CameraUtil.moveCamera(this.line, new THREE.Vector3(5, 10, 15), 0.01)
+        // }))
+
+        // 掉落触发器
+        // this.line.addTrigger(new trigger(new THREE.Vector3(5, 10.5, 0), [3, 3, 3], () => {
+        //     this.line?.setDrop(true)
+        // }))                                          //     |    落点    |            
+        // // 落地触发器，下降速度为 0.1                       高度  速度 前进速度
+        // this.line.addTrigger(new trigger(new THREE.Vector3((10 / 0.1) * 0.2, 0.5, 0), [3, 3, 3], () => {
+        //     this.line?.setDrop(false, 0.5)
+        // }))
     }
 });
 </script>
