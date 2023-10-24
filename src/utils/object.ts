@@ -1,9 +1,9 @@
 import * as THREE from 'three'
 import * as CANNON from 'cannon-es'
 
-export function ThreeVec3ToCannon(vec = new THREE.Vector3(0, 0, 0)) {
+export function ThreeVec3ToCannon(vec = new THREE.Vector3(0, 0, 0), offset = new THREE.Vector3(0, 0, 0)) {
     return new CANNON.Vec3(
-        vec.x, vec.y, vec.z
+        vec.x + offset.x, vec.y + offset.y, vec.z + offset.z
     )
 }
 export function CannonVec3ToThree(vec = new CANNON.Vec3(0, 0, 0)) {
@@ -13,14 +13,11 @@ export function CannonVec3ToThree(vec = new CANNON.Vec3(0, 0, 0)) {
 }
 
 export function makeBox(size: number[], position: number[], color: THREE.MeshPhongMaterialParameters) {
-    if(position.length == 3 && size.length == 3) {
-        const box = new THREE.Mesh( new THREE.BoxGeometry(size[0], size[1], size[2]), new THREE.MeshPhongMaterial(color) )
-        box.position.copy(new THREE.Vector3(position[0], position[1], position[2]))
-        box.receiveShadow = true
-        box.castShadow = true
-        return box
-    }
-    return null
+    const box = new THREE.Mesh( new THREE.BoxGeometry(size[0], size[1], size[2]), new THREE.MeshPhongMaterial(color) )
+    box.position.copy(new THREE.Vector3(position[0], position[1], position[2]))
+    box.receiveShadow = true
+    box.castShadow = true
+    return box
 }
 
 export function makeBoxs(info: { x: number, y: number, z:number, width: number, height: number, depth: number }[], color: THREE.MeshPhongMaterialParameters) {

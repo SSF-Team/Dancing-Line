@@ -22,9 +22,6 @@ export default class Line {
 
     private config: SceneConfig
 
-    private clock = new THREE.Clock()
-    private oldElapsedTime = 0
-    public deltaTime = 0
     private laseY = 0
 
     private tags: {
@@ -158,10 +155,6 @@ export default class Line {
                 })
             }
         }
-        // 更新渲染时间
-        const elapsedTime = this.clock.getElapsedTime()
-        this.deltaTime = elapsedTime - this.oldElapsedTime
-        this.oldElapsedTime = elapsedTime
         // 追加的运行循环函数
         this.appendRun()
     }

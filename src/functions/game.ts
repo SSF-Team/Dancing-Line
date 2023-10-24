@@ -1,10 +1,12 @@
+import * as THREE from 'three'
+
 import World from '@/functions/world'
 import Line from '@/functions/line'
-import * as THREE from 'three'
 import trigger from './trigger'
 import CannonDebugger from 'cannon-es-debugger'
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
+import {Howl, Howler} from 'howler'
 
 export default class Game {
 
@@ -12,7 +14,7 @@ export default class Game {
     public renderer: THREE.WebGLRenderer
     public camera: THREE.PerspectiveCamera
     public light: THREE.DirectionalLight
-    public sound: THREE.Audio
+    public sound: Howl | null = null
 
     public world: World
     public line: Line
@@ -24,28 +26,27 @@ export default class Game {
         // 初始化物理引擎
         this.world = new World()
         // 初始化场景
-        const { scene, renderer, camera, light, sound } = init(config, this.world)
+        const { scene, renderer, camera, light } = init(config, this.world)
         this.scene = scene
         this.renderer = renderer
         this.camera = camera
         this.light = light
-        this.sound = sound
         this.scene.onAfterRender = this.run.bind(this)
         // 默认线
         this.line = new Line(this.scene, this.camera, this.renderer, this.light, linePosition, config)
-        // 初始化线物理引擎模型
         this.world.initLine(this.line)
     }
 
     public start() {
         if(!this.config.freeCamera) {
             this.line.run()
-            this.sound.play()
+            if(this.sound) this.sound.play()
         }
     }
     public stop() {
         this.line.stop()
-        this.sound.stop()
+        if(this.sound) this.sound.stop()
+        this.world.line?.sleep()
     }
     public click() {
         this.line.click()
@@ -68,7 +69,17 @@ export default class Game {
      */
     public addObject(object: any, type?: string) {
         this.scene.add(object)
-        if(type) this.world.createObject(object, type)
+        if(type) {
+            if(type.startsWith('group')) {
+                type = type.split(' ')[1]
+                const group = object as THREE.Group
+                for(let i=0; i<group.children.length; i++) {
+                    this.world.createObject(object.children[i], type, group.position)
+                }
+            } else {
+                this.world.createObject(object, type)
+            }
+        }
     }
 
     /**
@@ -77,38 +88,51 @@ export default class Game {
      * @param [volume=0.5] 音量
      */
     public addMusic(path: string, volume = 0.5) {
-        const audioLoader = new THREE.AudioLoader()
-        const sound = this.sound
-        audioLoader.load( path, function( buffer ) {
-            sound.setBuffer(buffer)
-            sound.setLoop(true)
-            sound.setVolume(volume)
-        });
+        this.sound = new Howl({
+            src: path,
+            html5: true,
+            volume: volume
+        })
     }
 
     // ===============================================
+    private playTime = 0
+    private clock = new THREE.Clock()
+    private sumSowTime = 0
 
     private run() {
+        const spt = this.clock.getDelta()
+        this.sumSowTime += spt
+        // 音频对齐检查
+        // const swh = this.sound?.seek()
+        // if(swh && this.line.isRun()) {
+        //     this.playTime += spt
+        //     console.log(swh, 1000 / (spt * 1000), this.playTime)
+        //     if(Math.abs(Number(this.playTime.toFixed(1)) - Number(swh.toFixed(1))) > 0.3) {
+        //         console.log('pause')
+        //         // this.sound.pause()
+        //     } else {
+        //         // this.sound.pause()
+        //     }
+        // }
         // 运行线逻辑
-        this.line.runLine()
+        if (this.sumSowTime >= 1 / 90) {
+            this.sumSowTime = 0
+            this.line.runLine()
+        }
         // 运行物理模型
-        this.world.main.step(1 / 60, this.line.deltaTime, 3)
-        if(this.line.line) {
-            // 同步 Y 轴到渲染引擎
+        this.world.main.step(1 / 60, spt, 3)
+        if (this.line.line) {
             this.line.line.position.setY(this.world.getLine().y)
-            // 锁定线在渲染引擎中的旋转轴
-            this.world.line?.quaternion.set(0, 0, 0, 1)
-            // 同步 X、Z 轴到物理模型
             this.world.line?.position.set(this.line.line.position.x, this.world.getLine().y, this.line.line.position.z)
         }
-        // console.log(this.world.getLine())
     }
 }
 
 /**
  * 初始化场景
  * @param config 场景配置
- * @returns 场景、渲染器、相机
+ * @returns 场景、渲染器、相机、主光源
  */
 export function init(config: SceneConfig, world: World) {
     const updateList: (any | null)[] = []
@@ -124,9 +148,6 @@ export function init(config: SceneConfig, world: World) {
     const camera = new THREE.PerspectiveCamera(config.camera.pov, window.innerWidth / window.innerHeight, 0.1, 1000)
     camera.position.copy(config.camera.position ? config.camera.position : new THREE.Vector3(-10, 20, -5))
     camera.rotation.copy(config.camera.rotation ? config.camera.rotation : new THREE.Euler(0, 0, 0))
-    const listener = new THREE.AudioListener()
-    camera.add(listener)
-    const sound = new THREE.Audio(listener)
 
     // DEBUG: 启用相机控制器
     if(config.freeCamera) {
@@ -136,7 +157,7 @@ export function init(config: SceneConfig, world: World) {
         updateList.push(controls)
     }
 
-    // // 主光源，用于产生阴影和明暗关系
+    // 主光源，用于产生阴影和明暗关系
     const light = new THREE.DirectionalLight(0xFFFFFF, 1)
     light.castShadow = true
     if(config.lightPosition)
@@ -148,7 +169,7 @@ export function init(config: SceneConfig, world: World) {
     scene.add(light)
     scene.add(light.target)
 
-    // 环境光源，用来抵消阴影
+    // 环境光源，用来抵消太重的阴影
     const hemisphereLight = new THREE.HemisphereLight(0xFFFFFF, 0x000000, config.shadowDeep ? config.shadowDeep : 0.7)
     scene.add(hemisphereLight)
 
@@ -176,6 +197,7 @@ export function init(config: SceneConfig, world: World) {
         updateList.push(cannonDebugger)
     }
 
+    // 窗口大小同步相关逻辑
     function resizeRendererToDisplaySize(renderer: THREE.WebGLRenderer) {
         const canvas = renderer.domElement
         const width = window.innerWidth
@@ -190,6 +212,7 @@ export function init(config: SceneConfig, world: World) {
         return needResize
     }
 
+    // 主循环
     function animate() {
         for(let i=0; i<updateList.length; i++) {
             const object = updateList[i]
@@ -205,5 +228,5 @@ export function init(config: SceneConfig, world: World) {
     }
     animate()
 
-    return { scene, renderer, camera, light, sound }
+    return { scene, renderer, camera, light }
 }

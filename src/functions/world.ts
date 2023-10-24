@@ -1,4 +1,5 @@
 import * as CANNON from "cannon-es"
+import * as THREE from 'three'
 import Line from "./line"
 import * as ObjectUtil from "@/utils/object"
 
@@ -18,7 +19,7 @@ export default class World {
         this.main.gravity.set(0, -9.82, 0)
     }
 
-    public initLine(line:Line) {
+    public initLine(line: Line) {
         this.baseLine = line
         // 将 line head 创建为刚体
         // PS：Threejs 和 cannon 的坐标系统不太一样
@@ -40,12 +41,12 @@ export default class World {
         })
     }
 
-    public createObject(object: any, type: string) {
+    public createObject(object: any, type: string, offset = new THREE.Vector3(0, 0, 0)) {
         switch(type) {
             case 'floor': {
                 const floorBody = new CANNON.Body({
                     mass: 0,
-                    position: ObjectUtil.ThreeVec3ToCannon(object.position),
+                    position: ObjectUtil.ThreeVec3ToCannon(object.position, offset),
                     shape: new CANNON.Plane(),
                     material: new CANNON.Material({restitution: 0, friction: 0})
                 })
@@ -58,7 +59,7 @@ export default class World {
                 const size = (box.geometry as THREE.BoxGeometry).parameters
                 const boxBody = new CANNON.Body({
                     mass: 0,
-                    position: ObjectUtil.ThreeVec3ToCannon(box.position),
+                    position: ObjectUtil.ThreeVec3ToCannon(box.position, offset),
                     shape: new CANNON.Box(new CANNON.Vec3(size.width * 0.5, size.height * 0.5, size.depth * 0.5)),
                     material: new CANNON.Material({restitution: 0, friction: 0})
                 })
