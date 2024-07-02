@@ -1,6 +1,7 @@
 interface SceneConfig {
     skyColor: THREE.Color           // 背景色
     lineColor?: THREE.MeshPhongMaterialParameters
+    lineSpeed?: number              // 舞线速度（0.1）
     shadowDeep?: number             // 阴影深度（环境亮度 0.7）
 
     canvaName: string               // 画布名称

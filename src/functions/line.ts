@@ -1,5 +1,4 @@
 import * as THREE from 'three'
-import trigger from './trigger'
 
 /**
  * 线主体类，提供线初始化、删除、移动等功能，不支持也不会支持多条线
@@ -18,21 +17,11 @@ export default class Line {
     public line: THREE.Mesh | null = null
     private lineColor: THREE.MeshPhongMaterialParameters
     public lineList: THREE.Mesh[] = []
-    private triggerList: trigger[] = []
 
     private config: SceneConfig
 
     private laseY = 0
-
-    private tags: {
-        direction: 'x' | 'z',
-        run: boolean,
-        drop: boolean
-    } = {
-        direction: 'x',
-        run: false,
-        drop: true
-    }
+    private drop = false
 
     constructor(scene: THREE.Scene,
                 camera: THREE.Camera,
@@ -54,47 +43,9 @@ export default class Line {
         }
     }
 
-    public run() {
-        this.tags.run = true
-    }
-    public stop() {
-        this.tags.run = false
-    }
-    public isRun() {
-        return this.tags.run
-    }
-
-    /**
-     * 更换方向
-     */
-    public changeDirection() {
-        // 在当前 line 位置新建一个 line
-        if(this.line) {
-            // 在空中不允许转向
-            const nowY = Math.floor(this.line.position.y * 100) / 100
-            if (nowY == this.laseY) {
-                this.tags.direction = this.tags.direction === 'x' ? 'z' : 'x'
-                const position = this.line.position.clone()
-                this.initLineBody(position)
-            }
-        }
-        // 如果 lineList 长度大于 10，删除第一个 line
-        if(this.lineList.length > 10) {
-            const line = this.lineList.shift()
-            if(line)
-                this.scene.remove(line)
-        }
-    }
-    public click() {
-        this.changeDirection()
-    }
-
-    /**
-     * 添加触发器
-     * @param trigger 触发器
-     */
-    public addTrigger(trigger: trigger) {
-        this.triggerList.push(trigger)
+    public updateConfig(config: SceneConfig) {
+        this.config = config
+        this.lineColor = config.lineColor ? config.lineColor : {color: 0x007acc}
     }
 
     /**
@@ -109,10 +60,11 @@ export default class Line {
         if(this.line) {
             // console.log(this.line.position)
             this.initLineBody(this.line.position)
+            this.drop = false
         }
     }
 
-    public runLine() {
+    public runLine(y: number, direction: 'x' | 'z', difference: number) {
         if(this.line) {
             const nowLine = this.lineList[this.lineList.length - 1]
             // 让光照系统内的对象都跟随 line 移动
@@ -134,25 +86,24 @@ export default class Line {
                 }
                 // 让镜头看向 line
                 // this.camera.lookAt(this.line.position)
-            }
-            if (this.tags.run) {
                 // 让线段向对应方向移动并且增加长度
-                this.line.position[this.tags.direction] += 0.3
-                const nowY = Math.floor(this.line.position.y * 100) / 100
-                if (nowLine && nowY == this.laseY) {
-                    nowLine.position[this.tags.direction] += 0.15
-                    nowLine.scale[this.tags.direction] += 0.3
-                }
-                this.laseY = nowY
-                // 检查触发器
-                this.triggerList.forEach((item) => {
-                    const result = item.check(this.line?.position || new THREE.Vector3())
-                    if (result) {
-                        item.callback(this)
-                        // 移除触发器
-                        this.triggerList.splice(this.triggerList.indexOf(item), 1)
+                const ay = Math.round(y * 100) / 100
+                console.log(ay + '/' + this.laseY)
+                if(ay == this.laseY || this.laseY == 0) {
+                    if(nowLine && this.lineList.length > 0) {
+                        nowLine.position[direction] += difference / 2
+                        nowLine.scale[direction] += difference
                     }
-                })
+                } else {
+                    this.drop = true
+                }
+                this.laseY = ay
+            }
+            // 如果 lineList 长度大于 x，删除第一个 line
+            if(this.lineList.length > 10) {
+                const line = this.lineList.shift()
+                if(line)
+                    this.scene.remove(line)
             }
         }
         // 追加的运行循环函数
@@ -165,7 +116,7 @@ export default class Line {
      * 生成一个新的身体线段
      * @param position 生成坐标
      */
-    private initLineBody(position: THREE.Vector3) {
+    public initLineBody(position: THREE.Vector3) {
         const geometry = new THREE.BoxGeometry( 1, 1, 1 )
         const material = new THREE.MeshPhongMaterial(this.lineColor)
         const cube = new THREE.Mesh( geometry, material )

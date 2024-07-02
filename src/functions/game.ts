@@ -2,7 +2,6 @@ import * as THREE from 'three'
 
 import World from '@/functions/world'
 import Line from '@/functions/line'
-import trigger from './trigger'
 import CannonDebugger from 'cannon-es-debugger'
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
@@ -19,15 +18,19 @@ export default class Game {
     public world: World
     public line: Line
 
-    private config: SceneConfig
+    public tags: {
+        status: 'run' | 'stop' | 'die',
+    } = {
+        status: 'stop'
+    }
+
+    public config: SceneConfig
     private lineBodyInfos: any[] = []
 
     constructor(config: SceneConfig, linePosition = new THREE.Vector3(0, 0.5, 0)) {
         this.config = config
-        // 初始化物理引擎
-        this.world = new World()
         // 初始化场景
-        const { scene, renderer, camera, light } = init(config, this.world)
+        const { scene, renderer, camera, light } = init(config)
         this.scene = scene
         this.renderer = renderer
         this.camera = camera
@@ -35,14 +38,30 @@ export default class Game {
         this.scene.onAfterRender = this.run.bind(this)
         // 默认线
         this.line = new Line(this.scene, this.camera, this.renderer, this.light, linePosition, config)
-        this.world.initLine(this.line)
+        // 初始化物理引擎
+        this.world = new World(this)
+        if(config.viewHelper) {
+            const cannonDebugger = new (CannonDebugger as any)(scene, this.world.main)
+            updateList.push(cannonDebugger)
+        }
 
         // 注册窗口键盘事件
         window.addEventListener('keydown', (e) => {
             if(e.key === ' ') this.click()          // 空格点击
 
             if(config.debug) {
-                if(e.key === 's') this.stop()       // S 停止
+                if(e.key === 's') {                 // S 停止
+                    this.stop()
+                    // 追加相机控制器
+                    const controls = new OrbitControls(camera, renderer.domElement)
+                    controls.enableDamping = true
+                    updateList.push(controls)
+                    // 更新配置
+                    this.config.freeCamera = true
+                    this.line.updateConfig(this.config)
+                    // 去除场景迷雾
+                    this.scene.fog = null
+                }
                 if(e.key === 'l') {                 // 标点工具
                     const list = this.line.lineList
                     console.log(this.line.line?.position)
@@ -71,28 +90,26 @@ export default class Game {
     }
 
     public start() {
-        if(!this.config.freeCamera) {
-            this.line.run()
+        if(this.tags.status !== 'die' && !this.config.freeCamera) {
             if(this.sound) this.sound.play()
+            this.tags.status = 'run'
+            const position = this.line.line?.position.clone()
+            if(position)
+                this.line.initLineBody(position)
+            this.world.start()
         }
     }
     public stop() {
-        this.line.stop()
+        this.tags.status = 'stop'
         if(this.sound) this.sound.stop()
-        this.world.line?.sleep()
+        // this.world.line?.sleep()
     }
     public click() {
-        this.line.click()
+        this.world.turn()
     }
-    
-    /**
-     * 添加虚拟触发器
-     * @param position 坐标
-     * @param size 大小
-     * @param callback 回调方法
-     */
-    public addTrigger(position: THREE.Vector3, size: number[], callback: (line: Line) => void) {
-        this.line.addTrigger(new trigger(position, size, callback))
+    public die() {
+        this.stop()
+        this.tags.status = 'die'
     }
 
     /**
@@ -100,18 +117,12 @@ export default class Game {
      * @param object 对象
      * @param type 类型（cannon 中的类型名称）
      */
-    public addObject(object: any, type?: string) {
-        this.scene.add(object)
+    public addObject(object: any, type?: string, groupPosition?: THREE.Vector3) {
+        // 注意：如果是组对象，直接自行将整个组添加到场景中，此处只对内部对象进行处理
+        if(!groupPosition)
+            this.scene.add(object)
         if(type) {
-            if(type.startsWith('group')) {
-                type = type.split(' ')[1]
-                const group = object as THREE.Group
-                for(let i=0; i<group.children.length; i++) {
-                    this.world.createObject(object.children[i], type, group.position)
-                }
-            } else {
-                this.world.createObject(object, type)
-            }
+            this.world.createObject(object, type, groupPosition)
         }
     }
 
@@ -139,13 +150,19 @@ export default class Game {
         })
         const loader = new THREE.ObjectLoader()
         const objects = await loader.parse(json.scene)
-        // 倒序添加
+        // 由于加载到为引用数组，所以需要倒序添加防止数组变化
         for(let i=objects.children.length-1; i>=0; i--) {
             const item = objects.children[i]
-            if(item.userData && item.userData.type === 'box') {
-                this.addObject(item, 'box')
+            const type = item.type
+            if(type === 'Group') {
+                const group = item as THREE.Group
+                this.scene.add(group)
+                for(let i=group.children.length-1; i>=0; i--) {
+                    const groupItem = group.children[i]
+                    this.addObject(groupItem, groupItem.userData?.type, group.position)
+                }
             } else {
-                this.addObject(item)
+                this.addObject(item, item.userData?.type)
             }
         }
     }
@@ -170,17 +187,9 @@ export default class Game {
         //         // this.sound.pause()
         //     }
         // }
-        // 运行线逻辑
-        if (this.sumSowTime >= 1 / 90) {
-            this.sumSowTime = 0
-            this.line.runLine()
-        }
         // 运行物理模型
-        this.world.main.step(1 / 60, spt, 3)
-        if (this.line.line) {
-            this.line.line.position.setY(this.world.getLine().y)
-            this.world.line?.position.set(this.line.line.position.x, this.world.getLine().y, this.line.line.position.z)
-        }
+        if(this.tags.status !== 'die')
+            this.world.main.fixedStep(1 / 60, spt)
     }
 }
 
@@ -189,8 +198,8 @@ export default class Game {
  * @param config 场景配置
  * @returns 场景、渲染器、相机、主光源
  */
-export function init(config: SceneConfig, world: World) {
-    const updateList: (any | null)[] = []
+const updateList: (any | null)[] = []
+export function init(config: SceneConfig) {
 
     // 场景基础
     const scene = new THREE.Scene()
@@ -244,12 +253,6 @@ export function init(config: SceneConfig, world: World) {
 
         updateList.push(lightHelper)
         updateList.push(shadowHelper)
-    }
-
-    // DEBUG：物理引擎调试工具
-    if(config.viewHelper) {
-        const cannonDebugger = new (CannonDebugger as any)(scene, world.main)
-        updateList.push(cannonDebugger)
     }
 
     // 窗口大小同步相关逻辑

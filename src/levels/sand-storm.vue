@@ -24,7 +24,7 @@ export default defineComponent({
     },
     methods: {
         viewClick() {
-            if(this.game?.line.isRun()) {
+            if(this.game?.tags.status === 'run') {
                 this.game?.click()
             } else {
                 this.game?.start()
@@ -36,6 +36,7 @@ export default defineComponent({
         const game = new Game({
             skyColor: new THREE.Color('#e0e69e'),
             lineColor: { color: 0xf5504c },
+            lineSpeed: 19,
             shadowDeep: 0.3,
             canvaName: 'three',
             camera: {
@@ -53,20 +54,26 @@ export default defineComponent({
         // 音乐
         game.addMusic('music/Cheetah Mobile Games - The Desert.mp3', 1)
         // 其他设置
-        game.scene.fog = new THREE.Fog(0xe0e69e, 0.010, 100)
+        game.scene.fog = new THREE.Fog(0xe0e69e, 0.010, 50)
 
         // 加载场景
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         game.loadMap(require('@/assets/levels/sand-storm.json'))
 
         // 辅助地板
-        // let floorGeometry = new THREE.PlaneGeometry(3000, 3000)
-        // let floorMaterial = new THREE.MeshPhongMaterial({color: 0xa1a1a1})
-        // let floor = new THREE.Mesh(floorGeometry, floorMaterial)
-        // floor.rotation.x = -0.5 * Math.PI
-        // floor.receiveShadow = true
-        // floor.position.y = 9
-        // this.game.addObject(floor, 'floor')
+        const floorY = [
+            // 9,          //第一层
+            7,          //第二层
+        ] as number[]
+        floorY.forEach(y => {
+            const floorGeometry = new THREE.PlaneGeometry(1000, 1000)
+            const floorMaterial = new THREE.MeshPhongMaterial({color: 0xa1a1a1})
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial)
+            floor.rotation.x = -0.5 * Math.PI
+            floor.receiveShadow = true
+            floor.position.y = y
+            this.game?.addObject(floor, 'floor')
+        })
     }
 })
 </script>
