@@ -20,6 +20,7 @@ export default class Game {
     public line: Line
 
     private config: SceneConfig
+    private lineBodyInfos: any[] = []
 
     constructor(config: SceneConfig, linePosition = new THREE.Vector3(0, 0.5, 0)) {
         this.config = config
@@ -35,6 +36,38 @@ export default class Game {
         // 默认线
         this.line = new Line(this.scene, this.camera, this.renderer, this.light, linePosition, config)
         this.world.initLine(this.line)
+
+        // 注册窗口键盘事件
+        window.addEventListener('keydown', (e) => {
+            if(e.key === ' ') this.click()          // 空格点击
+
+            if(config.debug) {
+                if(e.key === 's') this.stop()       // S 停止
+                if(e.key === 'l') {                 // 标点工具
+                    const list = this.line.lineList
+                    console.log(this.line.line?.position)
+                    if(list) {
+                        const lastBody = list[list.length - 1] as THREE.Mesh
+                        const box = new THREE.Box3().setFromObject( lastBody )
+                        const size = box.getSize(new THREE.Vector3())
+                        this.lineBodyInfos.push({
+                            x: Math.trunc(lastBody.position.x),
+                            y: Math.trunc(lastBody.position.y),
+                            z: Math.trunc(lastBody.position.z),
+                            width: Math.trunc(size.x),
+                            height: Math.trunc(size.y),
+                            depth: Math.trunc(size.z)
+                        })
+                    }
+                    this.click()
+                }
+                if(e.key === 'p') {                 // 输出标点信息
+                    console.log(this.lineBodyInfos)
+                    console.log(JSON.stringify(this.lineBodyInfos))
+                    this.lineBodyInfos = []
+                }
+            }
+        })
     }
 
     public start() {
@@ -93,6 +126,28 @@ export default class Game {
             html5: true,
             volume: volume
         })
+    }
+
+    /**
+     * 加载地图
+     * @param json 地图数据
+     */
+    public async loadMap(json: any) {
+        const removeTypes = ['DirectionalLight', 'Camera']
+        json.scene.object.children = json.scene.object.children.filter((item: any) => {
+            return !removeTypes.includes(item.type)
+        })
+        const loader = new THREE.ObjectLoader()
+        const objects = await loader.parse(json.scene)
+        // 倒序添加
+        for(let i=objects.children.length-1; i>=0; i--) {
+            const item = objects.children[i]
+            if(item.userData && item.userData.type === 'box') {
+                this.addObject(item, 'box')
+            } else {
+                this.addObject(item)
+            }
+        }
     }
 
     // ===============================================

@@ -1,5 +1,7 @@
 <template>
-    <SandStorm></SandStorm>
+    <div>
+        <SandStorm></SandStorm>
+    </div>
 </template>
 
 <script lang="ts">

@@ -14,4 +14,6 @@ interface SceneConfig {
     freeCamera?: boolean             // DEBUG: 是否自由视角
     lightHelper?: boolean            // DEBUG: 是否启用光源镜头辅助器
     viewHelper?: boolean            // DEBUG: 刚体框架辅助
+
+    debug?: boolean                  // DEBUG: 是否启用调试模式（追加调试功能）
 }

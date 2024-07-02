@@ -56,11 +56,12 @@ export default class World {
             }
             case 'box': {
                 const box = object as THREE.Mesh
-                const size = (box.geometry as THREE.BoxGeometry).parameters
+                const box3 = new THREE.Box3().setFromObject( box )
+                const size = box3.getSize(new THREE.Vector3())
                 const boxBody = new CANNON.Body({
                     mass: 0,
                     position: ObjectUtil.ThreeVec3ToCannon(box.position, offset),
-                    shape: new CANNON.Box(new CANNON.Vec3(size.width * 0.5, size.height * 0.5, size.depth * 0.5)),
+                    shape: new CANNON.Box(new CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2)),
                     material: new CANNON.Material({restitution: 0, friction: 0})
                 })
                 this.main.addBody(boxBody)
