@@ -2,6 +2,7 @@ import * as CANNON from "cannon-es"
 import * as THREE from 'three'
 import * as ObjectUtil from "@/utils/object"
 import Game from "./game"
+import Line from "./line"
 
 /*
     物理引擎方法，用于对物理引擎进行初始化、添加对象、获取状态等操作
@@ -47,29 +48,7 @@ export default class World {
         console.log('创建线成功：' + lineHead.id)
         
         // 碰撞检测
-        lineHead.addEventListener('collide', (e: any) => {
-            const contact = e.contact as CANNON.ContactEquation
-            const contactNormal = contact.ni // 接触点的法向量
-            const normal = contactNormal
-
-            // 撞击速度
-            const impactVelocity = Math.floor(contact.getImpactVelocityAlongNormal())
-            
-            if(normal.y == -1) {
-                line.dropFinish()
-            }
-            // 其他值只要不是 0 就是碰到了墙
-            if((normal.x != 0 || normal.z != 0) && normal.y == 0) {
-                console.log('撞墙判定（绝对值）:' 
-                    + '(' + contact.bj.id + ')'
-                    + normal 
-                    + '/' + Math.abs(impactVelocity))
-                if(Math.abs(impactVelocity) > 1) {
-                    console.log(e)
-                    this.game?.die()
-                }
-            }
-        })
+        lineHead.addEventListener('collide', (e: any) => { this.collide(line, e) })
     }
 
     public createObject(object: any, type: string, offset = new THREE.Vector3(0, 0, 0)) {
@@ -84,7 +63,7 @@ export default class World {
                 })
                 floorBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2)
                 this.main.addBody(floorBody)
-                break
+                return floorBody.id
             }
             case 'box': {
                 const box = object as THREE.Mesh
@@ -95,11 +74,20 @@ export default class World {
                     position: ObjectUtil.ThreeVec3ToCannon(box.position, offset),
                     shape: new CANNON.Box(new CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2)),
                     material: new CANNON.Material({restitution: 0, friction: 0}),
-                    sleepSpeedLimit: 0.1
+                    sleepSpeedLimit: 0.1,
+                    isTrigger: object.userData?.fun === 'trigger'
                 })
                 this.main.addBody(boxBody)
-                break
+                return boxBody.id
             }
+        }
+        return -1
+    }
+
+    public removeBody(id: number) {
+        const body = this.main.getBodyById(id)
+        if(body) {
+            this.main.removeBody(body)
         }
     }
 
@@ -107,6 +95,9 @@ export default class World {
 
     public start() {
         this.line.velocity.set(this.game.config.lineSpeed ?? 20, 0, 0)
+    }
+    public stop() {
+        this.line.velocity.set(0, 0, 0)
     }
 
     // 转向
@@ -145,5 +136,34 @@ export default class World {
         }
         // console.log('差值：' + difference)
         line.runLine(this.line.position.y, this.lineStatus.direction, Math.abs(difference))
+    }
+
+    private collide(line: Line, event: any) {
+        if(!event.body.isTrigger) {
+            const contact = event.contact as CANNON.ContactEquation
+            const contactNormal = contact.ni // 接触点的法向量
+            const normal = contactNormal
+
+            // 撞击速度
+            const impactVelocity = Math.floor(contact.getImpactVelocityAlongNormal())
+            
+            if(normal.y == -1) {
+                line.dropFinish()
+            }
+            // 其他值只要不是 0 就是碰到了墙
+            if((normal.x != 0 || normal.z != 0) && normal.y == 0) {
+                console.log('撞墙判定（绝对值）:' 
+                    + '(' + contact.bj.id + ')'
+                    + normal 
+                    + '/' + Math.abs(impactVelocity))
+                if(Math.abs(impactVelocity) > 1) {
+                    console.log(event)
+                    this.game?.die()
+                }
+            }
+        } else {
+            // 触发触发器行为
+            this.game?.trigger(event.body.id)
+        }
     }
 }

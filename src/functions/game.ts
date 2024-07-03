@@ -7,6 +7,19 @@ import CannonDebugger from 'cannon-es-debugger'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import {Howl, Howler} from 'howler'
 
+/**
+ * 游戏类
+ * 负责控制整个游戏的运行，包括场景、物理引擎、音频等
+ * 它同时控制了物理引擎的 World 类和主线的 Line 类
+ * =======================================
+ * 游戏主流程：游戏状态 status 写作 s
+ * game.start()：s = 'run'
+ *         -> game.run()        // 游戏启动后由 world 的 fixedStep 循环进行全部的主循环
+ *     world.run()
+ *         -> line.runLine()    // 在 world step 中对线条的渲染进行更新
+ *     world.collide()          // 在 world step 中对碰撞进行检测，撞击、物品拾取等都在这里处理
+ * =======================================
+ */
 export default class Game {
 
     public scene: THREE.Scene
@@ -18,15 +31,30 @@ export default class Game {
     public world: World
     public line: Line
 
+    public config: SceneConfig
     public tags: {
         status: 'run' | 'stop' | 'die',
     } = {
         status: 'stop'
     }
-
-    public config: SceneConfig
+    
     private lineBodyInfos: any[] = []
 
+    private playTime = 0
+    private clock = new THREE.Clock()
+    private sumSowTime = 0
+
+    // 触发器映射表，由于 connon 的触发器没法设置名字，所以将创建出来的 id 与名字进行映射
+    private triggerMap: { [key: number]: string } = {}
+    private triggerFuns: { [key: string]: () => void } = {
+        'trigger_die': () => { this.die() }     // 触发死亡
+    }
+
+    /**
+     * 初始化游戏
+     * @param config 场景配置
+     * @param linePosition 线的位置
+     */
     constructor(config: SceneConfig, linePosition = new THREE.Vector3(0, 0.5, 0)) {
         this.config = config
         // 初始化场景
@@ -89,6 +117,36 @@ export default class Game {
         })
     }
 
+    /**
+     * 主循环
+     */
+    private run() {
+        const spt = this.clock.getDelta()
+        this.sumSowTime += spt
+        // 音频对齐检查
+        // const swh = this.sound?.seek()
+        // if(swh && this.line.isRun()) {
+        //     this.playTime += spt
+        //     console.log(swh, 1000 / (spt * 1000), this.playTime)
+        //     if(Math.abs(Number(this.playTime.toFixed(1)) - Number(swh.toFixed(1))) > 0.3) {
+        //         console.log('pause')
+        //         // this.sound.pause()
+        //     } else {
+        //         // this.sound.pause()
+        //     }
+        // }
+        // 运行物理模型
+        if(this.tags.status !== 'die')
+            this.world.main.fixedStep(1 / 60, spt)
+        // 处理触发器移除
+        for(const key in this.triggerMap) {
+            if(this.triggerMap[key].indexOf('remove-') === 0) {
+                delete this.triggerMap[key]
+                this.world.removeBody(Number(key))
+            }
+        }
+    }
+
     public start() {
         if(this.tags.status !== 'die' && !this.config.freeCamera) {
             if(this.sound) this.sound.play()
@@ -102,7 +160,7 @@ export default class Game {
     public stop() {
         this.tags.status = 'stop'
         if(this.sound) this.sound.stop()
-        // this.world.line?.sleep()
+            this.world.stop()
     }
     public click() {
         this.world.turn()
@@ -113,16 +171,42 @@ export default class Game {
     }
 
     /**
+     * 触发触发器
+     * @param id 触发器 id
+     */
+    public trigger(id: number) {
+        const name = this.triggerMap[id]
+        console.log('触发触发器：' + name)
+        if(name && this.triggerFuns[name]) {
+            this.triggerFuns[name]()
+            this.triggerMap[id] = 'remove-' + name
+        }
+    }
+
+    // 初始化功能 ====================================
+
+    /**
      * 添加对象。如果存在 type 将同时将对象作为刚体添加到物理引擎中
      * @param object 对象
      * @param type 类型（cannon 中的类型名称）
      */
     public addObject(object: any, type?: string, groupPosition?: THREE.Vector3) {
         // 注意：如果是组对象，直接自行将整个组添加到场景中，此处只对内部对象进行处理
+        // 非 debug 模式下不显示触发器
+        if(object.userData?.fun === 'trigger' && !this.config.debug) {
+            object.visible = false
+        }
+        // 添加到场景
         if(!groupPosition)
             this.scene.add(object)
         if(type) {
-            this.world.createObject(object, type, groupPosition)
+            const worldItemId = this.world.createObject(object, type, groupPosition)
+            // 记录一些特殊对象
+            if(object.userData?.fun == 'trigger') {
+                console.log('添加触发器：' + object.name + ' -> ' + worldItemId)
+                this.triggerMap[worldItemId] = object.name
+            }
+            return -1
         }
     }
 
@@ -159,7 +243,7 @@ export default class Game {
                 this.scene.add(group)
                 for(let i=group.children.length-1; i>=0; i--) {
                     const groupItem = group.children[i]
-                    this.addObject(groupItem, groupItem.userData?.type, group.position)
+                    this.addObject(groupItem, groupItem.userData.type, group.position)
                 }
             } else {
                 this.addObject(item, item.userData?.type)
@@ -167,29 +251,23 @@ export default class Game {
         }
     }
 
-    // ===============================================
-    private playTime = 0
-    private clock = new THREE.Clock()
-    private sumSowTime = 0
+    /**
+     * 设置触发器函数
+     * @param funs 触发器函数
+     */
+    public setTrigger(funs: { [key: string]: () => void }) {
+        for(const key in funs) {
+            this.triggerFuns[key] = funs[key]
+        }
+    }
 
-    private run() {
-        const spt = this.clock.getDelta()
-        this.sumSowTime += spt
-        // 音频对齐检查
-        // const swh = this.sound?.seek()
-        // if(swh && this.line.isRun()) {
-        //     this.playTime += spt
-        //     console.log(swh, 1000 / (spt * 1000), this.playTime)
-        //     if(Math.abs(Number(this.playTime.toFixed(1)) - Number(swh.toFixed(1))) > 0.3) {
-        //         console.log('pause')
-        //         // this.sound.pause()
-        //     } else {
-        //         // this.sound.pause()
-        //     }
-        // }
-        // 运行物理模型
-        if(this.tags.status !== 'die')
-            this.world.main.fixedStep(1 / 60, spt)
+    // 触发器功能 ====================================
+
+    public removeGroup(name: string) {
+        const group = this.scene.getObjectByName(name)
+        if(group) {
+            this.scene.remove(group)
+        }
     }
 }
 

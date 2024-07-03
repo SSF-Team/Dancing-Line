@@ -88,7 +88,6 @@ export default class Line {
                 // this.camera.lookAt(this.line.position)
                 // 让线段向对应方向移动并且增加长度
                 const ay = Math.round(y * 100) / 100
-                console.log(ay + '/' + this.laseY)
                 if(ay == this.laseY || this.laseY == 0) {
                     if(nowLine && this.lineList.length > 0) {
                         nowLine.position[direction] += difference / 2
@@ -100,7 +99,8 @@ export default class Line {
                 this.laseY = ay
             }
             // 如果 lineList 长度大于 x，删除第一个 line
-            if(this.lineList.length > 10) {
+            const maxLineCount = 20
+            if(this.lineList.length > maxLineCount) {
                 const line = this.lineList.shift()
                 if(line)
                     this.scene.remove(line)

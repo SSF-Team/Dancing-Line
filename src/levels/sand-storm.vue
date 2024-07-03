@@ -36,7 +36,7 @@ export default defineComponent({
         const game = new Game({
             skyColor: new THREE.Color('#e0e69e'),
             lineColor: { color: 0xf5504c },
-            lineSpeed: 19,
+            lineSpeed: 18,
             shadowDeep: 0.3,
             canvaName: 'three',
             camera: {
@@ -45,10 +45,8 @@ export default defineComponent({
                 rotation: new THREE.Euler(-2, -0.6, -2.3)
             },
             lightPosition: new THREE.Vector3(3, 15, 7),
-            // freeCamera: true,
-            // lightHelper: true,
             viewHelper: true,
-            debug: true
+            debug: process.env.NODE_ENV === 'development'
         }, new THREE.Vector3(0, 10.5, 0))
         this.game = game
         // 音乐
@@ -60,10 +58,22 @@ export default defineComponent({
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         game.loadMap(require('@/assets/levels/sand-storm.json'))
 
+        // 触发器方法
+        const triggerFuns = {
+            // 地图清理
+            'trigger_rm_start': () => {
+                game.removeGroup('Start Point Group')
+            },
+            'trigger_rm_1': () => {
+                game.removeGroup('Part1 Group')
+            },
+        }
+        this.game.setTrigger(triggerFuns)
+
         // 辅助地板
         const floorY = [
             // 9,          //第一层
-            7,          //第二层
+            // 7,          //第二层
         ] as number[]
         floorY.forEach(y => {
             const floorGeometry = new THREE.PlaneGeometry(1000, 1000)
