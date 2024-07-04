@@ -6,6 +6,7 @@ import CannonDebugger from 'cannon-es-debugger'
 
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import {Howl, Howler} from 'howler'
+import { runTime } from '@/functions/app'
 
 /**
  * 游戏类
@@ -34,15 +35,20 @@ export default class Game {
     public config: SceneConfig
     public tags: {
         status: 'run' | 'stop' | 'die',
+        fps: number
     } = {
-        status: 'stop'
+        status: 'stop',
+        fps: 0
     }
     
     private lineBodyInfos: any[] = []
 
-    private playTime = 0
     private clock = new THREE.Clock()
     private sumSowTime = 0
+    private playTime = 0
+    private effectiveTime = 0
+    private clickTimes = 0
+    
 
     // 触发器映射表，由于 connon 的触发器没法设置名字，所以将创建出来的 id 与名字进行映射
     private triggerMap: { [key: number]: string } = {}
@@ -74,70 +80,67 @@ export default class Game {
         }
 
         // 注册窗口键盘事件
-        window.addEventListener('keydown', (e) => {
-            if(e.key === ' ') this.click()          // 空格点击
-
-            if(config.debug) {
-                if(e.key === 's') {                 // S 停止
-                    this.stop()
-                    // 追加相机控制器
-                    const controls = new OrbitControls(camera, renderer.domElement)
-                    controls.enableDamping = true
-                    updateList.push(controls)
-                    // 更新配置
-                    this.config.freeCamera = true
-                    this.line.updateConfig(this.config)
-                    // 去除场景迷雾
-                    this.scene.fog = null
-                }
-                if(e.key === 'l') {                 // 标点工具
-                    const list = this.line.lineList
-                    console.log(this.line.line?.position)
-                    if(list) {
-                        const lastBody = list[list.length - 1] as THREE.Mesh
-                        const box = new THREE.Box3().setFromObject( lastBody )
-                        const size = box.getSize(new THREE.Vector3())
-                        this.lineBodyInfos.push({
-                            x: Math.trunc(lastBody.position.x),
-                            y: Math.trunc(lastBody.position.y),
-                            z: Math.trunc(lastBody.position.z),
-                            width: Math.trunc(size.x),
-                            height: Math.trunc(size.y),
-                            depth: Math.trunc(size.z)
-                        })
-                    }
-                    this.click()
-                }
-                if(e.key === 'p') {                 // 输出标点信息
-                    console.log(this.lineBodyInfos)
-                    console.log(JSON.stringify(this.lineBodyInfos))
-                    this.lineBodyInfos = []
-                }
-            }
-        })
+        window.addEventListener('keydown', () => { this.keyController(event) })
+        // 注册窗口焦点事件
+        // window.addEventListener('blur', () => { this.stop() })
     }
 
     /**
      * 主循环
      */
+    private debugSum = {
+        sumTime: 0,
+        fps: 0
+    }
     private run() {
-        const spt = this.clock.getDelta()
-        this.sumSowTime += spt
+        const spt = this.clock.getDelta()                   // 渲染间隔间隔时间
+        this.sumSowTime += spt                              // 总渲染时间
+        this.tags.fps = Math.floor(1 / spt * 100) / 100     // 帧率
+        const swh = this.sound?.seek()              // 音频播放时间
+
+        // 数据上报
+        if(this.sumSowTime % 0.5 < 0.01) {
+            runTime.debug.fps = Math.floor(this.debugSum.fps / this.debugSum.sumTime)
+        } else {
+            this.debugSum.sumTime ++
+            // 每 0.5 秒计算一次帧率和渲染时间平均值
+            this.debugSum.fps += this.tags.fps
+        }
+        if(this.sumSowTime % 0.1 < 0.01) {
+            runTime.debug.spt = spt
+            runTime.debug.showTime = this.sumSowTime
+            runTime.debug.audioTime = this.sound?.seek()
+            runTime.debug.playTime = this.playTime
+
+            runTime.debug.effectTime = this.effectiveTime
+
+            if(swh) runTime.debug.audioDelay = swh - this.playTime
+            if(swh) runTime.debug.cAudioDelay = swh - this.effectiveTime
+
+            // 游戏进度：音频播放进度
+            if(this.sound) {
+                runTime.game.percent = (this.sound.seek() / this.sound.duration()) * 100
+            }
+        }
         // 音频对齐检查
-        // const swh = this.sound?.seek()
-        // if(swh && this.line.isRun()) {
-        //     this.playTime += spt
-        //     console.log(swh, 1000 / (spt * 1000), this.playTime)
-        //     if(Math.abs(Number(this.playTime.toFixed(1)) - Number(swh.toFixed(1))) > 0.3) {
-        //         console.log('pause')
-        //         // this.sound.pause()
-        //     } else {
-        //         // this.sound.pause()
-        //     }
-        // }
+        let passShow = false
+        if(swh && this.tags.status == 'run') {
+            this.playTime += spt                    // 游戏运行时间
+            // 如果播放进度快于渲染进度，暂停音频
+            if(Math.floor((swh - this.effectiveTime) * 1000) > 50) {
+                this.sound?.seek(this.playTime)
+                this.effectiveTime = swh
+            }
+            if(Math.floor((swh - this.effectiveTime) * 1000) < -50) {
+                passShow = true
+            } else {
+                this.effectiveTime += spt
+            }
+        }
         // 运行物理模型
-        if(this.tags.status !== 'die')
-            this.world.main.fixedStep(1 / 60, spt)
+        if(this.tags.status !== 'die' && !passShow)
+            this.world.main.fixedStep()
+            // this.world.main.step(1 / 60, spt, 3)
         // 处理触发器移除
         for(const key in this.triggerMap) {
             if(this.triggerMap[key].indexOf('remove-') === 0) {
@@ -164,6 +167,9 @@ export default class Game {
     }
     public click() {
         this.world.turn()
+        if(this.tags.status == 'run') {
+            runTime.debug.clickTimes = ++ this.clickTimes
+        }
     }
     public die() {
         this.stop()
@@ -267,6 +273,64 @@ export default class Game {
         const group = this.scene.getObjectByName(name)
         if(group) {
             this.scene.remove(group)
+        }
+    }
+
+    // 其他 ====================================
+
+    private keyController(e: any) {
+        const key = e.key
+        switch(key) {
+            case ' ':
+            case 'z':
+            case 'x': this.click(); break
+            case 's': {
+                if(this.config.debug) {
+                    this.stop()
+                    // 追加相机控制器
+                    const controls = new OrbitControls(this.camera, this.renderer.domElement)
+                    controls.enableDamping = true
+                    updateList.push(controls)
+                    // 更新配置
+                    this.config.freeCamera = true
+                    this.line.updateConfig(this.config)
+                    // 去除场景迷雾
+                    this.scene.fog = null
+                    // 看向原点，防止找不到地图
+                    this.camera.lookAt(new THREE.Vector3(0, 0, 0))
+                }
+                break
+            }
+            case 'k':
+            case 'l': {
+                if(this.config.debug) {
+                    const list = this.line.lineList
+                    console.log(this.line.line?.position)
+                    if (list) {
+                        const lastBody = list[list.length - 1] as THREE.Mesh
+                        const box = new THREE.Box3().setFromObject(lastBody)
+                        const size = box.getSize(new THREE.Vector3())
+                        this.lineBodyInfos.push({
+                            x: Math.trunc(lastBody.position.x),
+                            y: Math.trunc(lastBody.position.y),
+                            z: Math.trunc(lastBody.position.z),
+                            width: Math.trunc(size.x),
+                            height: Math.trunc(size.y),
+                            depth: Math.trunc(size.z)
+                        })
+                    }
+                    this.click()
+                }
+                break
+            }
+            case 'p': {
+                if(this.config.debug) {
+                    console.log(this.lineBodyInfos)
+                    console.log(JSON.stringify(this.lineBodyInfos))
+                    this.lineBodyInfos = []
+                }
+                break
+            }
         }
     }
 }

@@ -15,11 +15,9 @@ export default class World {
     private game: Game
 
     private lineStatus: {
-        direction: 'x' | 'z',
-        drop: boolean
+        direction: 'x' | 'z'
     } = {
-        direction: 'x',
-        drop: false
+        direction: 'x'
     }
 
     constructor(game: Game) {
@@ -103,25 +101,34 @@ export default class World {
     // 转向
     public turn() {
         const line = this.game.line
-        this.lineStatus.direction = this.lineStatus.direction === 'x' ? 'z' : 'x'
-        if(this.lineStatus.direction == 'x') {
-            this.line.velocity.set(this.game.config.lineSpeed ?? 20, 0, 0)
-        } else {
-            this.line.velocity.set(0, 0, this.game.config.lineSpeed ?? 20)
+        if(!line.drop) {
+            this.lineStatus.direction = this.lineStatus.direction === 'x' ? 'z' : 'x'
+            if(this.lineStatus.direction == 'x') {
+                this.line.velocity.set(this.game.config.lineSpeed ?? 20, 0, 0)
+            } else {
+                this.line.velocity.set(0, 0, this.game.config.lineSpeed ?? 20)
+            }
+            line.initLineBody(new THREE.Vector3(
+                this.line.position.x,
+                this.line.position.y,
+                this.line.position.z
+            ))
         }
-        line.initLineBody(new THREE.Vector3(
-            this.line.position.x,
-            this.line.position.y,
-            this.line.position.z
-        ))
     }
 
     // ====================================
 
     // 运行
+    private lastY = 0
     private run(game: Game, event: any) {
         const line = game.line
         const nowPosition = line.line?.position.clone()
+        // 掉落状态判断
+        const cy = Math.floor(this.line.position.y * 100) / 100
+        if(cy < this.lastY || this.lastY == 0) {
+            line.drop = true
+        }
+        this.lastY = cy
         // line 的 y 坐标永远同步
         line.line?.position.setY(this.line.position.y)
         if(game.tags.status == 'run') {

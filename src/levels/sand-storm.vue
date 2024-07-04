@@ -1,7 +1,8 @@
 <template>
     <canvas
         id="three"
-        @mousedown="viewClick">
+        @mousedown="viewClick"
+        @touchstart="viewClick">
     </canvas>
 </template>
 
@@ -23,12 +24,15 @@ export default defineComponent({
         }
     },
     methods: {
-        viewClick() {
+        viewClick(e: any) {
             if(this.game?.tags.status === 'run') {
                 this.game?.click()
             } else {
                 this.game?.start()
             }
+            // PS：mousedown 在触屏设备上触发延迟较大，使用 touchstart 会更小一点
+            // 防止 touchstart 事件触发后触发 mousedown 事件
+            e.preventDefault()
         }
     },
     async mounted() {

@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import * as TWEEN from '@tweenjs/tween.js'
 
 /**
  * 线主体类，提供线初始化、删除、移动等功能，不支持也不会支持多条线
@@ -15,13 +16,11 @@ export default class Line {
     private lightSystem: { object: any, position: THREE.Vector3 }[] = []
 
     public line: THREE.Mesh | null = null
-    private lineColor: THREE.MeshPhongMaterialParameters
     public lineList: THREE.Mesh[] = []
+    public drop = false
 
+    private lineColor: THREE.MeshPhongMaterialParameters
     private config: SceneConfig
-
-    private laseY = 0
-    private drop = false
 
     constructor(scene: THREE.Scene,
                 camera: THREE.Camera,
@@ -58,7 +57,6 @@ export default class Line {
 
     public dropFinish() {
         if(this.line) {
-            // console.log(this.line.position)
             this.initLineBody(this.line.position)
             this.drop = false
         }
@@ -87,16 +85,12 @@ export default class Line {
                 // 让镜头看向 line
                 // this.camera.lookAt(this.line.position)
                 // 让线段向对应方向移动并且增加长度
-                const ay = Math.round(y * 100) / 100
-                if(ay == this.laseY || this.laseY == 0) {
+                if(!this.drop) {
                     if(nowLine && this.lineList.length > 0) {
                         nowLine.position[direction] += difference / 2
                         nowLine.scale[direction] += difference
                     }
-                } else {
-                    this.drop = true
                 }
-                this.laseY = ay
             }
             // 如果 lineList 长度大于 x，删除第一个 line
             const maxLineCount = 20
