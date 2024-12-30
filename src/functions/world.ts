@@ -10,8 +10,8 @@ import Line from "./line"
 export default class World {
 
     public main: CANNON.World
+    public line: CANNON.Body
 
-    private line: CANNON.Body
     private game: Game
 
     private lineStatus: {
@@ -155,6 +155,12 @@ export default class World {
             const impactVelocity = Math.floor(contact.getImpactVelocityAlongNormal())
             
             if(normal.y == -1) {
+                if(this.game.tags.status == 'run')
+                    line.initLineBody(new THREE.Vector3(
+                        this.line.position.x,
+                        this.line.position.y,
+                        this.line.position.z
+                    ))
                 line.dropFinish()
             }
             // 其他值只要不是 0 就是碰到了墙

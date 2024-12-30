@@ -57,7 +57,6 @@ export default class Line {
 
     public dropFinish() {
         if(this.line) {
-            this.initLineBody(this.line.position)
             this.drop = false
         }
     }
@@ -83,7 +82,8 @@ export default class Line {
                     }
                 }
                 // 让镜头看向 line
-                // this.camera.lookAt(this.line.position)
+                if(this.config.camera.lookLine)
+                    this.camera.lookAt(this.line.position)
                 // 让线段向对应方向移动并且增加长度
                 if(!this.drop) {
                     if(nowLine && this.lineList.length > 0) {
@@ -94,7 +94,7 @@ export default class Line {
             }
             // 如果 lineList 长度大于 x，删除第一个 line
             const maxLineCount = 20
-            if(this.lineList.length > maxLineCount) {
+            if(!this.config.debug && this.lineList.length > maxLineCount) {
                 const line = this.lineList.shift()
                 if(line)
                     this.scene.remove(line)

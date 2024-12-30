@@ -1,7 +1,9 @@
 import { reactive } from 'vue'
 
 const baseRunTime = { 
-    debug: {},
+    debug: {
+        audioLoadState: 'none',
+    },
     game: {}
  } as Runtime
 

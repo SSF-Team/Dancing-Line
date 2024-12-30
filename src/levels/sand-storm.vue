@@ -40,7 +40,7 @@ export default defineComponent({
         const game = new Game({
             skyColor: new THREE.Color('#e0e69e'),
             lineColor: { color: 0xf5504c },
-            lineSpeed: 18,
+            lineSpeed: 17.9,
             shadowDeep: 0.3,
             canvaName: 'three',
             camera: {
@@ -70,14 +70,17 @@ export default defineComponent({
             },
             'trigger_rm_1': () => {
                 game.removeGroup('Part1 Group')
+                // 性能检查点
+                console.log(this.game?.sound?.seek())
             },
         }
         this.game.setTrigger(triggerFuns)
 
         // 辅助地板
         const floorY = [
-            // 9,          //第一层
+            9,          //第一层
             // 7,          //第二层
+            // 6,          //第三层
         ] as number[]
         floorY.forEach(y => {
             const floorGeometry = new THREE.PlaneGeometry(1000, 1000)

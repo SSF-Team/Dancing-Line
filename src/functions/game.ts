@@ -34,7 +34,7 @@ export default class Game {
 
     public config: SceneConfig
     public tags: {
-        status: 'run' | 'stop' | 'die',
+        status: 'ready' | 'run' | 'stop' | 'die' | 'err',
         fps: number
     } = {
         status: 'stop',
@@ -44,6 +44,7 @@ export default class Game {
     private lineBodyInfos: any[] = []
 
     private clock = new THREE.Clock()
+    
     private sumSowTime = 0
     private playTime = 0
     private effectiveTime = 0
@@ -79,6 +80,11 @@ export default class Game {
             updateList.push(cannonDebugger)
         }
 
+        // Debug
+        if(config.debug) {
+            runTime.debug.screenName = config.sceneName ?? config.canvaName
+        }
+
         // 注册窗口键盘事件
         window.addEventListener('keydown', () => { this.keyController(event) })
         // 注册窗口焦点事件
@@ -99,48 +105,56 @@ export default class Game {
         const swh = this.sound?.seek()              // 音频播放时间
 
         // 数据上报
-        if(this.sumSowTime % 0.5 < 0.01) {
-            runTime.debug.fps = Math.floor(this.debugSum.fps / this.debugSum.sumTime)
-        } else {
-            this.debugSum.sumTime ++
-            // 每 0.5 秒计算一次帧率和渲染时间平均值
-            this.debugSum.fps += this.tags.fps
-        }
-        if(this.sumSowTime % 0.1 < 0.01) {
-            runTime.debug.spt = spt
-            runTime.debug.showTime = this.sumSowTime
-            runTime.debug.audioTime = this.sound?.seek()
-            runTime.debug.playTime = this.playTime
+        if(this.config.debug) {
+            if(this.sumSowTime % 0.5 < 0.01) {
+                runTime.debug.fps = Math.floor(this.debugSum.fps / this.debugSum.sumTime)
+            } else {
+                this.debugSum.sumTime ++
+                // 每 0.5 秒计算一次帧率和渲染时间平均值
+                this.debugSum.fps += this.tags.fps
+            }
+            if(this.sumSowTime % 0.1 < 0.01) {
+                runTime.debug.spt = spt
+                runTime.debug.showTime = this.sumSowTime
+                runTime.debug.audioTime = this.sound?.seek()
+                runTime.debug.playTime = this.playTime
 
-            runTime.debug.effectTime = this.effectiveTime
+                runTime.debug.effectTime = this.effectiveTime
 
-            if(swh) runTime.debug.audioDelay = swh - this.playTime
-            if(swh) runTime.debug.cAudioDelay = swh - this.effectiveTime
-
-            // 游戏进度：音频播放进度
-            if(this.sound) {
+                if(swh) runTime.debug.audioDelay = swh - this.playTime
+                if(swh) runTime.debug.cAudioDelay = swh - this.effectiveTime
+            }
+            // 音频进度
+            if(this.sumSowTime % 0.1 < 0.01 && this.sound) {
                 runTime.game.percent = (this.sound.seek() / this.sound.duration()) * 100
             }
-        }
+        }   
         // 音频对齐检查
         let passShow = false
         if(swh && this.tags.status == 'run') {
             this.playTime += spt                    // 游戏运行时间
-            // 如果播放进度快于渲染进度，暂停音频
-            if(Math.floor((swh - this.effectiveTime) * 1000) > 50) {
-                this.sound?.seek(this.playTime)
-                this.effectiveTime = swh
-            }
-            if(Math.floor((swh - this.effectiveTime) * 1000) < -50) {
-                passShow = true
+            if(Math.floor((swh - this.effectiveTime) * 1000) > 150 ||
+                Math.floor((swh - this.effectiveTime) * 1000) < -150) {
+                    // 如果播放进度和渲染进度差很多，将音频进度调整到渲染进度
+                    this.sound?.seek(this.playTime)
+                    this.effectiveTime = swh
             } else {
-                this.effectiveTime += spt
+                // 播放进度和渲染进度微调
+                if(Math.floor((swh - this.effectiveTime) * 1000) > 5) {
+                    this.sound?.seek(this.playTime)
+                    this.effectiveTime = swh
+                }
+                if(Math.floor((swh - this.effectiveTime) * 1000) < -5) {
+                    passShow = true
+                } else {
+                    this.effectiveTime += spt
+                }
             }
         }
         // 运行物理模型
         if(this.tags.status !== 'die' && !passShow)
-            this.world.main.fixedStep()
-            // this.world.main.step(1 / 60, spt, 3)
+            // this.world.main.fixedStep()
+            this.world.main.step(1 / 60, spt)
         // 处理触发器移除
         for(const key in this.triggerMap) {
             if(this.triggerMap[key].indexOf('remove-') === 0) {
@@ -151,7 +165,7 @@ export default class Game {
     }
 
     public start() {
-        if(this.tags.status !== 'die' && !this.config.freeCamera) {
+        if(this.tags.status === 'ready' && !this.config.freeCamera) {
             if(this.sound) this.sound.play()
             this.tags.status = 'run'
             const position = this.line.line?.position.clone()
@@ -185,7 +199,7 @@ export default class Game {
         console.log('触发触发器：' + name)
         if(name && this.triggerFuns[name]) {
             this.triggerFuns[name]()
-            this.triggerMap[id] = 'remove-' + name
+            // this.triggerMap[id] = 'remove-' + name
         }
     }
 
@@ -222,11 +236,29 @@ export default class Game {
      * @param [volume=0.5] 音量
      */
     public addMusic(path: string, volume = 0.5) {
-        this.sound = new Howl({
-            src: path,
-            html5: true,
-            volume: volume
-        })
+        // Debug
+        if(this.config.debug) runTime.debug.audioLoadState = 'setup'
+        this.sound = new Howl({ src: path, preload: true, volume: volume })
+            .on('load', () => {
+                console.log('音频加载成功')
+                this.tags.status = 'ready'
+                // Debug
+                if(this.config.debug) runTime.debug.audioLoadState = 'ready'
+            })
+            .on('loaderror', () => {
+                console.error('音频加载失败')
+                this.tags.status = 'err'
+                // Debug
+                if(this.config.debug) runTime.debug.audioLoadState = 'error'
+            })
+            .on('playerror', () => {
+                console.error('音频播放失败')
+                this.tags.status = 'err'
+                // Debug
+                if(this.config.debug) runTime.debug.audioLoadState = 'error'
+                this.stop()
+            })
+
     }
 
     /**
@@ -267,6 +299,25 @@ export default class Game {
         }
     }
 
+    /**
+     * 查找触发器
+     * @param name 触发器名字
+     * @returns 触发器对象
+     */
+    public findTrigger(name: string) {
+        let id = -1
+        for(const key in this.triggerMap) {
+            if(this.triggerMap[key] === name) {
+                id = Number(key)
+                break
+            }
+        }
+        if(id != -1) {
+            return this.world.main.getBodyById(id)
+        }
+        return null
+    }
+
     // 触发器功能 ====================================
 
     public removeGroup(name: string) {
@@ -305,7 +356,6 @@ export default class Game {
             case 'l': {
                 if(this.config.debug) {
                     const list = this.line.lineList
-                    console.log(this.line.line?.position)
                     if (list) {
                         const lastBody = list[list.length - 1] as THREE.Mesh
                         const box = new THREE.Box3().setFromObject(lastBody)
@@ -330,6 +380,13 @@ export default class Game {
                     this.lineBodyInfos = []
                 }
                 break
+            }
+            case 'c': {
+                if(this.config.debug) {
+                    // 输出相机的位置和旋转
+                    console.log('相机位置：', this.camera.position)
+                    console.log('相机旋转：', this.camera.rotation)
+                }
             }
         }
     }
@@ -400,8 +457,13 @@ export function init(config: SceneConfig) {
     // 窗口大小同步相关逻辑
     function resizeRendererToDisplaySize(renderer: THREE.WebGLRenderer) {
         const canvas = renderer.domElement
-        const width = window.innerWidth
-        const height = window.innerHeight
+        let width = window.innerWidth
+        let height = window.innerHeight
+        // 非全屏模式下使用画布的大小
+        if(config.fullScreen == false) {
+            width = canvas.clientWidth
+            height = canvas.clientHeight
+        }
         const canvasPixelWidth = canvas.width / window.devicePixelRatio
         const canvasPixelHeight = canvas.height / window.devicePixelRatio
 
