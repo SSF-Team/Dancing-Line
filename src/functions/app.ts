@@ -1,6 +1,7 @@
+import type { Runtime } from '@/types/runtime'
 import { reactive } from 'vue'
 
-const baseRunTime = { 
+const baseRunTime = {
     debug: {
         audioLoadState: 'none',
     },

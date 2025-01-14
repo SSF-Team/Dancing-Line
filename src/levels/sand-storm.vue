@@ -12,11 +12,11 @@ import Game from '@/functions/game'
 
 export default defineComponent({
     name: 'SandStorm',
-    components: {}, 
+    components: {},
     data() {
         return {
             game: null as Game | null,
-            lineBodyInfos: [] as { 
+            lineBodyInfos: [] as {
                 x: number, y: number, z:number,
                 width: number, height: number, depth: number
              }[]
@@ -37,7 +37,7 @@ export default defineComponent({
             },
             lightPosition: new THREE.Vector3(3, 15, 7),
             viewHelper: true,
-            debug: process.env.NODE_ENV === 'development'
+            debug: import.meta.env.MODE === 'development'
         }, new THREE.Vector3(0, 10.5, 0))
         this.game = game
         // 音乐
@@ -47,7 +47,8 @@ export default defineComponent({
 
         // 加载场景
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        game.loadMap(require('@/assets/levels/sand-storm.json'))
+        const map = await import('@/assets/levels/sand-storm.json')
+        game.loadMap(map.default)
 
         // 触发器方法
         const triggerFuns = {

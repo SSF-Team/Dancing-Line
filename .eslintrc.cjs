@@ -15,7 +15,7 @@ module.exports = {
         // debugger
         'no-debugger': 'warn',
         // console
-        'no-console': 'warn',
+        // 'no-console': 'warn',
         // 优先使用箭头函数
         'prefer-arrow-callback': 'warn',
         // 引号

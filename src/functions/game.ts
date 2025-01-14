@@ -4,9 +4,10 @@ import World from '@/functions/world'
 import Line from '@/functions/line'
 import CannonDebugger from 'cannon-es-debugger'
 
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
-import {Howl, Howler} from 'howler'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { Howl } from 'howler'
 import { runTime } from '@/functions/app'
+import type { SceneConfig } from '@/types/game'
 
 /**
  * 游戏类
@@ -40,16 +41,16 @@ export default class Game {
         status: 'stop',
         fps: 0
     }
-    
+
     private lineBodyInfos: any[] = []
 
     private clock = new THREE.Clock()
-    
+
     private sumSowTime = 0
     private playTime = 0
     private effectiveTime = 0
     private clickTimes = 0
-    
+
 
     // 触发器映射表，由于 connon 的触发器没法设置名字，所以将创建出来的 id 与名字进行映射
     private triggerMap: { [key: number]: string } = {}
@@ -128,7 +129,7 @@ export default class Game {
             if(this.sumSowTime % 0.1 < 0.01 && this.sound) {
                 runTime.game.percent = (this.sound.seek() / this.sound.duration()) * 100
             }
-        }   
+        }
         // 音频对齐检查
         let passShow = false
         if(swh && this.tags.status == 'run') {

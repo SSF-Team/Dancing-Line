@@ -35,13 +35,13 @@ export default defineComponent({
     components: { DebugView, LoadingPage, SandStorm },
     data() {
         return {
-            isDev: process.env.NODE_ENV === 'development',
+            isDev: import.meta.env.DEV,
             // isDev: false,
             game: null as Game | null,
             nowLabel: 'start'
         }
     },
-    mounted() {
+    async mounted() {
         this.game = new Game({
             fullScreen: false,
             canvaName: 'homeLine',
@@ -62,7 +62,8 @@ export default defineComponent({
         this.game.world.line.mass = 17
 
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        this.game.loadMap(require('@/levels/maps/home.json'))
+        const homeMap = await import('@/levels/maps/home.json')
+        this.game.loadMap(homeMap.default)
 
         const changeLableFun = () => {
             // 清除 line 下坠的速度
