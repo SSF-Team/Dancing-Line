@@ -62,7 +62,7 @@ export default defineComponent({
         this.game.world.line.mass = 17
 
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const homeMap = await import('@/levels/maps/home.json')
+        const homeMap = await import('./assets/levels/home.json')
         this.game.loadMap(homeMap.default)
 
         const changeLableFun = () => {

@@ -25,6 +25,7 @@ export default defineComponent({
     async mounted() {
         // 初始化游戏场景
         const game = new Game({
+            sceneName: 'SandStorm',
             skyColor: new THREE.Color('#e0e69e'),
             lineColor: { color: 0xf5504c },
             lineSpeed: 17.9,
