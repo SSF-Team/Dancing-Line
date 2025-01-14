@@ -1,8 +1,8 @@
-import * as CANNON from "cannon-es"
+import * as CANNON from 'cannon-es'
 import * as THREE from 'three'
-import * as ObjectUtil from "@/utils/object"
-import Game from "./game"
-import Line from "./line"
+import * as ObjectUtil from '@/utils/object'
+import Game from './game'
+import Line from './line'
 
 /*
     物理引擎方法，用于对物理引擎进行初始化、添加对象、获取状态等操作

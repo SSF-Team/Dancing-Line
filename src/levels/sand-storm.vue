@@ -2,8 +2,7 @@
     <canvas
         id="three"
         @mousedown="viewClick"
-        @touchstart="viewClick">
-    </canvas>
+        @touchstart="viewClick" />
 </template>
 
 <script lang="ts">
@@ -21,18 +20,6 @@ export default defineComponent({
                 x: number, y: number, z:number,
                 width: number, height: number, depth: number
              }[]
-        }
-    },
-    methods: {
-        viewClick(e: any) {
-            if(this.game?.tags.status === 'run') {
-                this.game?.click()
-            } else {
-                this.game?.start()
-            }
-            // PS：mousedown 在触屏设备上触发延迟较大，使用 touchstart 会更小一点
-            // 防止 touchstart 事件触发后触发 mousedown 事件
-            e.preventDefault()
         }
     },
     async mounted() {
@@ -91,6 +78,18 @@ export default defineComponent({
             floor.position.y = y
             this.game?.addObject(floor, 'floor')
         })
+    },
+    methods: {
+        viewClick(e: any) {
+            if(this.game?.tags.status === 'run') {
+                this.game?.click()
+            } else {
+                this.game?.start()
+            }
+            // PS：mousedown 在触屏设备上触发延迟较大，使用 touchstart 会更小一点
+            // 防止 touchstart 事件触发后触发 mousedown 事件
+            e.preventDefault()
+        }
     }
 })
 </script>

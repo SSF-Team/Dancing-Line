@@ -1,0 +1,9 @@
+node_modules
+dist
+dist_electron
+dist_capacitor
+out
+.gitignore
+
+public
+src/assets

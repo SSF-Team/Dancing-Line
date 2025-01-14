@@ -1,10 +1,10 @@
 <template>
-    <DebugView></DebugView>
-    <LoadingPage v-show="!isDev"></LoadingPage>
-    <!-- <div>
-        <SandStorm></SandStorm>
-    </div> -->
-    <div class="homeMenu">
+    <DebugView />
+    <LoadingPage v-show="!isDev" />
+    <div>
+        <SandStorm />
+    </div>
+    <!-- <div class="homeMenu">
         <canvas id="homeLine"></canvas>
         <div>
             <Card class="mainMenu">
@@ -17,38 +17,28 @@
                 </div>
             </Card>
         </div>
-    </div>
+    </div> -->
 </template>
 
 <script lang="ts">
 import * as THREE from 'three'
 import Game from '@/functions/game'
-import { Card } from 'vue3-bcui/packages'
 
 import { defineComponent } from 'vue'
 
 import DebugView from './components/debugView.vue'
 import LoadingPage from './pages/LoadingPage.vue'
+import SandStorm from './levels/sand-storm.vue'
 
 export default defineComponent({
     name: 'App',
-    components: { DebugView, LoadingPage, Card },
+    components: { DebugView, LoadingPage, SandStorm },
     data() {
         return {
             isDev: process.env.NODE_ENV === 'development',
             // isDev: false,
             game: null as Game | null,
             nowLabel: 'start'
-        }
-    },
-    methods: {
-        changeLable(name: string) {
-            if(this.game && this.nowLabel !== name) {
-                this.nowLabel = name
-                const line = this.game.world.line
-                // 将 line 往下移一个单位
-                line.position.y -= 1
-            }
         }
     },
     mounted() {
@@ -73,12 +63,12 @@ export default defineComponent({
 
         // eslint-disable-next-line @typescript-eslint/no-var-requires
         this.game.loadMap(require('@/levels/maps/home.json'))
-        
+
         const changeLableFun = () => {
             // 清除 line 下坠的速度
             if(this.game) {
                 this.game.world.line.velocity.y = 0
-                let trigger = this.game.findTrigger('trigger_' + this.nowLabel) ??
+                const trigger = this.game.findTrigger('trigger_' + this.nowLabel) ??
                     this.game.findTrigger('trigger_start')
                 if(trigger) {
                     // 把 line 移动到触发器的位置 y - 2
@@ -92,6 +82,16 @@ export default defineComponent({
             'trigger_none': changeLableFun
         }
         this.game.setTrigger(triggerFuns)
+    },
+    methods: {
+        changeLable(name: string) {
+            if(this.game && this.nowLabel !== name) {
+                this.nowLabel = name
+                const line = this.game.world.line
+                // 将 line 往下移一个单位
+                line.position.y -= 1
+            }
+        }
     }
 });
 </script>

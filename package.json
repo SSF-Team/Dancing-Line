@@ -1,58 +1,41 @@
 {
-  "name": "ss-dlfan",
-  "version": "0.2.0",
-  "private": true,
-  "scripts": {
-    "serve": "vue-cli-service serve",
-    "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
-  },
-  "dependencies": {
-    "@tweenjs/tween.js": "^23.1.2",
-    "@types/cannon": "^0.1.8",
-    "@types/howler": "^2.2.7",
-    "@types/three": "^0.152.1",
-    "cannon-es": "^0.20.0",
-    "cannon-es-debugger": "^1.0.0",
-    "core-js": "^3.8.3",
-    "howler": "^2.2.3",
-    "register-service-worker": "^1.7.2",
-    "three": "latest",
-    "vue": "^3.2.13",
-    "vue3-bcui": "^0.2.2"
-  },
-  "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^5.4.0",
-    "@typescript-eslint/parser": "^5.4.0",
-    "@vue/cli-plugin-babel": "~5.0.0",
-    "@vue/cli-plugin-eslint": "~5.0.0",
-    "@vue/cli-plugin-pwa": "~5.0.0",
-    "@vue/cli-plugin-typescript": "~5.0.0",
-    "@vue/cli-service": "~5.0.0",
-    "@vue/eslint-config-typescript": "^9.1.0",
-    "eslint": "^7.32.0",
-    "eslint-plugin-vue": "^8.0.3",
-    "typescript": "~4.5.5"
-  },
-  "eslintConfig": {
-    "root": true,
-    "env": {
-      "node": true
+    "name": "vue-project",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "run-p type-check \"build-only {@}\" --",
+        "preview": "vite preview",
+        "build-only": "vite build",
+        "type-check": "vue-tsc --build",
+        "lint": "eslint . --fix"
     },
-    "extends": [
-      "plugin:vue/vue3-essential",
-      "eslint:recommended",
-      "@vue/typescript/recommended"
-    ],
-    "parserOptions": {
-      "ecmaVersion": 2020
+    "dependencies": {
+        "@rushstack/eslint-patch": "^1.10.5",
+        "@tweenjs/tween.js": "^25.0.0",
+        "@types/cannon": "^0.1.13",
+        "@types/howler": "^2.2.12",
+        "@types/three": "^0.172.0",
+        "cannon-es": "^0.20.0",
+        "cannon-es-debugger": "^1.0.0",
+        "howler": "^2.2.4",
+        "three": "^0.172.0",
+        "vue": "^3.5.13",
+        "vue3-bcui": "^0.2.6"
     },
-    "rules": {}
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead",
-    "not ie 11"
-  ]
+    "devDependencies": {
+        "@tsconfig/node22": "^22.0.0",
+        "@types/node": "^22.10.2",
+        "@vitejs/plugin-vue": "^5.2.1",
+        "@vue/eslint-config-typescript": "^13.0.0",
+        "@vue/tsconfig": "^0.7.0",
+        "eslint": "^8.57.0",
+        "eslint-plugin-vue": "^9.26.0",
+        "npm-run-all2": "^7.0.2",
+        "typescript": "~5.6.3",
+        "vite": "^6.0.5",
+        "vite-plugin-vue-devtools": "^7.7.0",
+        "vue-tsc": "^2.1.10"
+    }
 }
