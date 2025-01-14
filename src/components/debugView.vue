@@ -16,15 +16,17 @@
             <template v-if="debug.audioTime">
                 <li>播放时间: {{ Math.floor(debug.audioTime * 100) / 100 }} s</li>
                 <li>播放进度: {{ Math.floor(game.percent * 100) / 100 }} %</li>
-                <li :class="getSoundColor((debug.cAudioDelay ?? 0) * 1000)" v-if="debug.cAudioDelay != debug.audioDelay">
-                    矫正延迟: {{ Math.floor((debug.cAudioDelay ?? 0) * 1000 * 100) / 100 }} ms</li>
+                <li v-if="debug.cAudioDelay != debug.audioDelay" :class="getSoundColor((debug.cAudioDelay ?? 0) * 1000)">
+                    矫正延迟: {{ Math.floor((debug.cAudioDelay ?? 0) * 1000 * 100) / 100 }} ms
+                </li>
                 <li :class="getSoundColor((debug.audioDelay ?? 0) * 1000)">
-                    原始延迟: {{ Math.floor((debug.audioDelay ?? 0) * 1000 * 100) / 100 }} ms</li>
+                    原始延迟: {{ Math.floor((debug.audioDelay ?? 0) * 1000 * 100) / 100 }} ms
+                </li>
             </template>
         </div>
         <div v-if="debug.clickTimes">
             <li>Player</li>
-            <li>点击次数: {{ debug.clickTimes }} ( {{ Math.floor(debug.clickTimes / (debug.playTime ?? 1))}} cps )</li>
+            <li>点击次数: {{ debug.clickTimes }} ( {{ Math.floor(debug.clickTimes / (debug.playTime ?? 1)) }} cps )</li>
         </div>
     </div>
 </template>

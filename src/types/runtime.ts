@@ -1,4 +1,4 @@
-interface Runtime {
+export interface Runtime {
     debug: {
         screenName: string,         // 当前画布名称
 

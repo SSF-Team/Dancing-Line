@@ -1,4 +1,6 @@
-interface SceneConfig {
+import * as THREE from 'three'
+
+export interface SceneConfig {
     fullScreen?: boolean              // 是否全窗口绘制（默认为true）
 
     canvaName: string               // 画布名称

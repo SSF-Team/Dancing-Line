@@ -1,11 +1,11 @@
 <template>
     <transition>
-        <div class="logo" v-if="showIndex <= maxIndex">
+        <div v-if="showIndex <= maxIndex" class="logo">
             <transition>
-                <img v-if="showIndex === 0" :src="require('@/assets/img/logo/threejs.svg')" alt="threejs"/>
+                <img v-if="showIndex === 0" src="@/assets/img/logo/threejs.svg" alt="threejs">
             </transition>
             <transition>
-                <img v-if="showIndex === 2" :src="require('@/assets/img/logo/ssfteam.svg')" alt="ssfteam"/>
+                <img v-if="showIndex === 2" src="@/assets/img/logo/ssfteam.svg" alt="ssfteam">
             </transition>
         </div>
     </transition>

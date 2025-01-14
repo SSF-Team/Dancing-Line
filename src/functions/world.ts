@@ -1,8 +1,8 @@
-import * as CANNON from "cannon-es"
+import * as CANNON from 'cannon-es'
 import * as THREE from 'three'
-import * as ObjectUtil from "@/utils/object"
-import Game from "./game"
-import Line from "./line"
+import * as ObjectUtil from '@/utils/object'
+import Game from './game'
+import Line from './line'
 
 /*
     物理引擎方法，用于对物理引擎进行初始化、添加对象、获取状态等操作
@@ -28,7 +28,7 @@ export default class World {
         this.main.gravity.set(0, -9.82, 0)
         this.main.broadphase = new CANNON.SAPBroadphase(this.main)
         // 添加 step 回调
-        this.main.addEventListener('postStep', (e: any) => { this.run(game, e) })
+        this.main.addEventListener('postStep', () => { this.run(game) })
         // 初始化线
         // 将 line head 创建为刚体
         // PS：Threejs 和 cannon 的坐标系统不太一样
@@ -44,7 +44,7 @@ export default class World {
         this.main.addBody(lineHead)
         this.line = lineHead
         console.log('创建线成功：' + lineHead.id)
-        
+
         // 碰撞检测
         lineHead.addEventListener('collide', (e: any) => { this.collide(line, e) })
     }
@@ -120,7 +120,7 @@ export default class World {
 
     // 运行
     private lastY = 0
-    private run(game: Game, event: any) {
+    private run(game: Game) {
         const line = game.line
         const nowPosition = line.line?.position.clone()
         // 掉落状态判断
@@ -153,7 +153,7 @@ export default class World {
 
             // 撞击速度
             const impactVelocity = Math.floor(contact.getImpactVelocityAlongNormal())
-            
+
             if(normal.y == -1) {
                 if(this.game.tags.status == 'run')
                     line.initLineBody(new THREE.Vector3(
@@ -165,9 +165,9 @@ export default class World {
             }
             // 其他值只要不是 0 就是碰到了墙
             if((normal.x != 0 || normal.z != 0) && normal.y == 0) {
-                console.log('撞墙判定（绝对值）:' 
+                console.log('撞墙判定（绝对值）:'
                     + '(' + contact.bj.id + ')'
-                    + normal 
+                    + normal
                     + '/' + Math.abs(impactVelocity))
                 if(Math.abs(impactVelocity) > 1) {
                     console.log(event)

@@ -2,8 +2,7 @@
     <canvas
         id="three"
         @mousedown="viewClick"
-        @touchstart="viewClick">
-    </canvas>
+        @touchstart="viewClick" />
 </template>
 
 <script lang="ts">
@@ -13,26 +12,14 @@ import Game from '@/functions/game'
 
 export default defineComponent({
     name: 'SandStorm',
-    components: {}, 
+    components: {},
     data() {
         return {
             game: null as Game | null,
-            lineBodyInfos: [] as { 
+            lineBodyInfos: [] as {
                 x: number, y: number, z:number,
                 width: number, height: number, depth: number
              }[]
-        }
-    },
-    methods: {
-        viewClick(e: any) {
-            if(this.game?.tags.status === 'run') {
-                this.game?.click()
-            } else {
-                this.game?.start()
-            }
-            // PS：mousedown 在触屏设备上触发延迟较大，使用 touchstart 会更小一点
-            // 防止 touchstart 事件触发后触发 mousedown 事件
-            e.preventDefault()
         }
     },
     async mounted() {
@@ -50,7 +37,7 @@ export default defineComponent({
             },
             lightPosition: new THREE.Vector3(3, 15, 7),
             viewHelper: true,
-            debug: process.env.NODE_ENV === 'development'
+            debug: import.meta.env.MODE === 'development'
         }, new THREE.Vector3(0, 10.5, 0))
         this.game = game
         // 音乐
@@ -60,7 +47,8 @@ export default defineComponent({
 
         // 加载场景
         // eslint-disable-next-line @typescript-eslint/no-var-requires
-        game.loadMap(require('@/assets/levels/sand-storm.json'))
+        const map = await import('@/assets/levels/sand-storm.json')
+        game.loadMap(map.default)
 
         // 触发器方法
         const triggerFuns = {
@@ -91,6 +79,18 @@ export default defineComponent({
             floor.position.y = y
             this.game?.addObject(floor, 'floor')
         })
+    },
+    methods: {
+        viewClick(e: any) {
+            if(this.game?.tags.status === 'run') {
+                this.game?.click()
+            } else {
+                this.game?.start()
+            }
+            // PS：mousedown 在触屏设备上触发延迟较大，使用 touchstart 会更小一点
+            // 防止 touchstart 事件触发后触发 mousedown 事件
+            e.preventDefault()
+        }
     }
 })
 </script>

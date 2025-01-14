@@ -1,5 +1,5 @@
+import type { SceneConfig } from '@/types/game'
 import * as THREE from 'three'
-import * as TWEEN from '@tweenjs/tween.js'
 
 /**
  * 线主体类，提供线初始化、删除、移动等功能，不支持也不会支持多条线
@@ -12,7 +12,7 @@ export default class Line {
     private camera: THREE.Camera
     private cameraPosition: THREE.Vector3 = new THREE.Vector3()
     private cameraNewPosition: {position: THREE.Vector3, speend: number} | null = null
-    private renderer: THREE.Renderer
+    private renderer: THREE.WebGLRenderer
     private lightSystem: { object: any, position: THREE.Vector3 }[] = []
 
     public line: THREE.Mesh | null = null
@@ -24,7 +24,7 @@ export default class Line {
 
     constructor(scene: THREE.Scene,
                 camera: THREE.Camera,
-                renderer: THREE.Renderer,
+                renderer: THREE.WebGLRenderer,
                 light: THREE.DirectionalLight,
                 position = new THREE.Vector3(0, 0.5, 0),
                 config: SceneConfig) {
@@ -103,7 +103,7 @@ export default class Line {
         // 追加的运行循环函数
         this.appendRun()
     }
-    
+
     // ========================================
 
     /**
